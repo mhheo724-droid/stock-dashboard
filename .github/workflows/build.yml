@@ -44,13 +44,16 @@ jobs:
           >> $ANDROID_HOME/tools/bin/sdkmanager
         chmod +x $ANDROID_HOME/tools/bin/sdkmanager
 
+    - name: Inject SDK paths into buildozer.spec
+      run: |
+        echo "" >> buildozer.spec
+        echo "android.sdk_path = $ANDROID_HOME" >> buildozer.spec
+        echo "android.ndk_path = $ANDROID_HOME/ndk/25.2.9519653" >> buildozer.spec
+
     - name: Install Buildozer
       run: pip install buildozer cython
 
     - name: Build APK
-      env:
-        ANDROIDSDK: ${{ env.ANDROID_HOME }}
-        ANDROIDNDK: ${{ env.ANDROID_HOME }}/ndk/25.2.9519653
       run: buildozer android debug 2>&1 | tail -300
       timeout-minutes: 60
 
