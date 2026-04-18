@@ -72,7 +72,10 @@ jobs:
       run: pip install buildozer cython
 
     - name: Build APK
-      run: buildozer android debug 2>&1 | tail -300
+      shell: bash
+      run: |
+        set -o pipefail
+        buildozer android debug 2>&1 | tee /tmp/buildozer.log
       timeout-minutes: 60
 
     - name: Upload APK
@@ -81,3 +84,11 @@ jobs:
         name: StockDashboard-APK
         path: bin/*.apk
         if-no-files-found: error
+
+    - name: Upload build log (always)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-log
+        path: /tmp/buildozer.log
+        if-no-files-found: ignore
