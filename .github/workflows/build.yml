@@ -90,8 +90,16 @@ jobs:
     - name: Build APK
       shell: bash
       run: |
-        set -o pipefail
         buildozer android debug 2>&1 | tee /tmp/buildozer.log
+        BUILD_EXIT=${PIPESTATUS[0]}
+        if [ "$BUILD_EXIT" != "0" ]; then
+          echo ""
+          echo "========== ERROR SUMMARY (grep for errors) =========="
+          grep -n -E "(Error|ERROR|Exception|Traceback|FAILED|fatal error|error:)" \
+            /tmp/buildozer.log | grep -v "^[0-9]*:.*#" | tail -80 || true
+          echo "======================================================"
+          exit 1
+        fi
       timeout-minutes: 60
 
     - name: Upload APK
