@@ -32,23 +32,37 @@ jobs:
     - name: Setup Android SDK (licenses auto-accepted)
       uses: android-actions/setup-android@v3
 
-    - name: Install Android NDK and build tools
+    - name: Install Android build-tools, platform, NDK
       run: |
-        sdkmanager "ndk;25.2.9519653" "build-tools;34.0.0" "platforms;android-34"
+        sdkmanager \
+          "build-tools;34.0.0" \
+          "platforms;android-34" \
+          "platform-tools" \
+          "ndk;25.2.9519653"
 
-    - name: Create sdkmanager wrapper (buildozer old-path compatibility)
+    - name: Wire Android SDK/NDK into buildozer expected paths
       run: |
-        mkdir -p $ANDROID_HOME/tools/bin
-        echo "#!/bin/bash" > $ANDROID_HOME/tools/bin/sdkmanager
-        echo "exec $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \"\$@\"" \
-          >> $ANDROID_HOME/tools/bin/sdkmanager
-        chmod +x $ANDROID_HOME/tools/bin/sdkmanager
+        mkdir -p ~/.buildozer/android/platform
 
-    - name: Inject SDK paths into buildozer.spec
-      run: |
-        echo "" >> buildozer.spec
-        echo "android.sdk_path = $ANDROID_HOME" >> buildozer.spec
-        echo "android.ndk_path = $ANDROID_HOME/ndk/25.2.9519653" >> buildozer.spec
+        # buildozer 가 찾는 android-sdk 경로를 pre-installed SDK로 심링크
+        ln -sf "$ANDROID_HOME" ~/.buildozer/android/platform/android-sdk
+
+        # buildozer 가 찾는 NDK 경로 심링크 (r25b = 25.2.9519653)
+        ln -sf "$ANDROID_HOME/ndk/25.2.9519653" \
+               ~/.buildozer/android/platform/android-ndk-r25b
+
+        # buildozer 가 old-style tools/bin/sdkmanager 로 호출하므로 래퍼 생성
+        mkdir -p "$ANDROID_HOME/tools/bin"
+        printf '#!/bin/bash\nexec "%s/cmdline-tools/latest/bin/sdkmanager" "$@"\n' \
+          "$ANDROID_HOME" > "$ANDROID_HOME/tools/bin/sdkmanager"
+        chmod +x "$ANDROID_HOME/tools/bin/sdkmanager"
+
+        # 확인 출력
+        echo "--- SDK structure check ---"
+        ls "$ANDROID_HOME/build-tools/"
+        ls "$ANDROID_HOME/platforms/"
+        ls "$ANDROID_HOME/ndk/"
+        echo "---------------------------"
 
     - name: Install Buildozer
       run: pip install buildozer cython
