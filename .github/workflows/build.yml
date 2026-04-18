@@ -16,11 +16,17 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
     - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y \
-          git zip unzip openjdk-17-jdk \
+          git zip unzip \
           libffi-dev libssl-dev python3-dev \
           build-essential libltdl-dev
 
