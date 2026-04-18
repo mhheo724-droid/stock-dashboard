@@ -12,17 +12,87 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Build APK (kivy/buildozer Docker)
-      run: |
-        docker run --rm \
-          -v "$GITHUB_WORKSPACE:/home/user/hostcwd" \
-          kivy/buildozer \
-          android debug 2>&1 | tee /tmp/buildozer.log
-      timeout-minutes: 90
+    - uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
 
-    - name: Fix permissions
-      if: always()
-      run: sudo chown -R "$USER:$USER" . || true
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          git zip unzip \
+          build-essential libltdl-dev \
+          libffi-dev libssl-dev python3-dev \
+          gettext autoconf automake libtool pkg-config \
+          cmake zlib1g-dev liblzma-dev \
+          libsqlite3-dev libncurses5-dev \
+          ccache
+
+    - name: Setup Android SDK (licenses auto-accepted)
+      uses: android-actions/setup-android@v3
+
+    - name: Install Android build-tools, platform, NDK
+      run: |
+        sdkmanager \
+          "build-tools;34.0.0" \
+          "platforms;android-34" \
+          "platform-tools" \
+          "ndk;25.2.9519653"
+
+    - name: Wire SDK/NDK into buildozer paths + extend license acceptance
+      run: |
+        mkdir -p ~/.buildozer/android/platform
+
+        ln -sf "$ANDROID_HOME" ~/.buildozer/android/platform/android-sdk
+        ln -sf "$ANDROID_HOME/ndk/25.2.9519653" \
+               ~/.buildozer/android/platform/android-ndk-r25b
+
+        # Find sdkmanager dynamically (handles cmdline-tools/latest vs cmdline-tools/16.0)
+        SDKMGR=$(find "$ANDROID_HOME/cmdline-tools" -name "sdkmanager" \
+                      -type f 2>/dev/null | sort | tail -1)
+        echo "Using sdkmanager: $SDKMGR"
+        mkdir -p "$ANDROID_HOME/tools/bin"
+        printf '#!/bin/bash\nexec "%s" "$@"\n' "$SDKMGR" \
+          > "$ANDROID_HOME/tools/bin/sdkmanager"
+        chmod +x "$ANDROID_HOME/tools/bin/sdkmanager"
+
+        # Append all known Android SDK license hashes (covers build-tools 34-37+)
+        mkdir -p "$ANDROID_HOME/licenses"
+        {
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee"
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e"
+          echo "84831b9409646a918e30573bab4c9c91346d8abd"
+          echo "8933bad161af4178b1185d1a37fbf41ea5269c55"
+        } >> "$ANDROID_HOME/licenses/android-sdk-license"
+        sort -u "$ANDROID_HOME/licenses/android-sdk-license" \
+          -o "$ANDROID_HOME/licenses/android-sdk-license"
+        {
+          echo "e9acab5b5fbb560a72cfaecce8946896ff6aab9d"
+          echo "84831b9409646a918e30573bab4c9c91346d8abd"
+        } >> "$ANDROID_HOME/licenses/android-sdk-preview-license"
+        sort -u "$ANDROID_HOME/licenses/android-sdk-preview-license" \
+          -o "$ANDROID_HOME/licenses/android-sdk-preview-license"
+
+        echo "=== build-tools ===" && ls "$ANDROID_HOME/build-tools/"
+        echo "=== platforms ===" && ls "$ANDROID_HOME/platforms/"
+        echo "=== ndk ===" && ls "$ANDROID_HOME/ndk/"
+        echo "=== android-sdk-license ===" \
+          && cat "$ANDROID_HOME/licenses/android-sdk-license"
+
+    - name: Install Buildozer
+      run: pip install buildozer cython
+
+    - name: Build APK
+      shell: bash
+      run: |
+        set -o pipefail
+        buildozer android debug 2>&1 | tee /tmp/buildozer.log
+      timeout-minutes: 60
 
     - name: Upload APK
       uses: actions/upload-artifact@v4

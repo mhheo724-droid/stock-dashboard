@@ -8,6 +8,8 @@ version         = 1.0.0
 
 requirements = python3,kivy==2.3.0,requests,certifi,urllib3,idna
 
+android.build_tools_version = 34.0.0
+
 orientation     = portrait
 fullscreen      = 0
 android.api     = 34
