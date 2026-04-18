@@ -6,11 +6,7 @@ source.dir      = .
 source.include_exts = py
 version         = 1.0.0
 
-# Android 필수 패키지
-# yfinance/pandas는 빌드 시간이 오래 걸릴 수 있음
-# 최소 빌드: requirements = python3,kivy==2.3.0,requests,certifi,charset-normalizer,urllib3,idna
-# 전체 빌드 (S&P500 폴백 포함):
-requirements = python3,kivy==2.3.0,requests,certifi,charset-normalizer,urllib3,idna
+requirements = python3,kivy==2.3.0,requests,certifi,urllib3,idna
 
 orientation     = portrait
 fullscreen      = 0
