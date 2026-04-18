@@ -12,15 +12,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
+    - uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
 
     - name: Install system dependencies
       run: |
@@ -30,23 +29,18 @@ jobs:
           libffi-dev libssl-dev python3-dev \
           build-essential libltdl-dev
 
-    - name: Setup Android SDK (licenses auto-accepted)
-      uses: android-actions/setup-android@v3
-
-    - name: Install required Android packages
-      run: |
-        sdkmanager "build-tools;34.0.0" "platforms;android-34" \
-                   "platform-tools" "ndk;25.2.9519653"
-
     - name: Install Buildozer
       run: pip install buildozer cython
 
+    - name: Pre-accept Android SDK licenses
+      run: |
+        mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
+        printf '\n24333f8a63b6825ea9c5514f83c2829b004d1fee\nd56f5187479451eabf01fb78af6dfcb131a6481e\n8933bad161af4178b1185d1a37fbf41ea5269c55' \
+          > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+        printf '\n84831b9409646a918e30573bab4c9c91346d8abd' \
+          > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
+
     - name: Build APK
-      env:
-        ANDROIDSDK: ${{ env.ANDROID_HOME }}
-        ANDROIDNDK: ${{ env.ANDROID_HOME }}/ndk/25.2.9519653
-        ANDROIDAPI: "34"
-        ANDROIDMINAPI: "21"
       run: buildozer android debug 2>&1 | tail -300
       timeout-minutes: 60
 
